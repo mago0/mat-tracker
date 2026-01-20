@@ -1,6 +1,6 @@
 # Mat Tracker
 
-A school-agnostic martial arts student management system for tracking attendance, belts, stripes, ranks, and student notes. Designed for BJJ schools but built to be open-sourceable.
+A white-label martial arts student management system for tracking attendance, belts, stripes, ranks, and student notes. Designed for BJJ schools but built to be open-sourceable.
 
 ![Mat Tracker Screenshot](docs/mat-tracker-sample.png)
 
