@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+site/node_modules/
+
+# Next.js
+site/.next/
+site/out/
+
+# Build
+site/.vercel
+site/tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+data/*.db
+data/*.db-journal
+data/*.db-shm
+data/*.db-wal
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Drizzle
+site/drizzle/meta/
