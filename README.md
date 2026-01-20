@@ -2,6 +2,8 @@
 
 A school-agnostic martial arts student management system for tracking attendance, belts, stripes, ranks, and student notes. Designed for BJJ schools but built to be open-sourceable.
 
+![Mat Tracker Screenshot](docs/mat-tracker-sample.png)
+
 ## Features
 
 - **Student Management**: Add, edit, and archive students with contact info
