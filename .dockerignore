@@ -1,0 +1,22 @@
+# Dependencies - let npm ci install fresh in container
+site/node_modules
+node_modules
+
+# Build outputs
+site/.next
+.next
+
+# Local data
+data/
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Misc
+*.log
+.DS_Store
