@@ -39,12 +39,12 @@ services:
       context: .
       target: runner
     ports:
-      - "${HOST_PORT}:${PORT}"
+      - "${HOST_PORT:-3000}:${PORT:-3000}"
     volumes:
       - ./data:/app/data
     environment:
       - NODE_ENV=production
-      - PORT=${PORT}
+      - PORT=${PORT:-3000}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - DATABASE_PATH=/app/data/mat-tracker.db
       - TZ=${TZ:-America/New_York}
