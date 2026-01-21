@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1768860477074,
+      "tag": "0000_special_rafael_vega",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1768866290930,
+      "tag": "0001_free_tombstone",
+      "breakpoints": true
+    }
+  ]
+}
