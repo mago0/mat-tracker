@@ -4,6 +4,9 @@ import { students, attendance } from "@/lib/db/schema";
 import { eq, desc, gte, and, count } from "drizzle-orm";
 import { getLocalDateString, getLocalDateStringDaysAgo } from "@/lib/dateUtils";
 
+// Force dynamic rendering - data changes frequently
+export const dynamic = "force-dynamic";
+
 async function getStats() {
   const today = getLocalDateString();
   const weekAgo = getLocalDateStringDaysAgo(7);

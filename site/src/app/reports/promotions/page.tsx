@@ -5,6 +5,9 @@ import { BELT_LABELS } from "@/lib/constants";
 import { BeltDisplay } from "@/components/BeltDisplay";
 import { PromotionsTable } from "./PromotionsTable";
 
+// Force dynamic rendering - data changes frequently
+export const dynamic = "force-dynamic";
+
 export default async function PromotionsReportPage() {
   const studentsWithStatus = await getAllStudentsPromotionStatus();
 

@@ -5,6 +5,9 @@ import { gte, count, eq, max } from "drizzle-orm";
 import { AttendanceHeatmap } from "@/components/AttendanceHeatmap";
 import { getLocalDateString, getLocalDateStringYearsAgo, getLocalDateStringDaysAgo } from "@/lib/dateUtils";
 
+// Force dynamic rendering - data changes frequently
+export const dynamic = "force-dynamic";
+
 async function getAttendanceData() {
   const oneYearAgoStr = getLocalDateStringYearsAgo(1);
 
