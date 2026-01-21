@@ -32,9 +32,13 @@ COPY --from=builder /app/site/.next/standalone ./
 COPY --from=builder /app/site/.next/static ./.next/static
 COPY --from=builder /app/site/public ./public
 
+# Copy migration files and script for database setup
+COPY --from=builder /app/site/drizzle ./drizzle
+COPY --from=builder /app/site/scripts/migrate.mjs ./scripts/migrate.mjs
+
 # Create directories for cache and data
 RUN mkdir -p .next/cache /app/data
-RUN chown -R nextjs:nodejs .next /app/data
+RUN chown -R nextjs:nodejs .next /app/data drizzle scripts
 
 USER nextjs
 
@@ -43,4 +47,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "node scripts/migrate.mjs && node server.js"]
