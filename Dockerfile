@@ -37,9 +37,10 @@ COPY --from=builder /app/site/.next/standalone ./
 COPY --from=builder /app/site/.next/static ./.next/static
 COPY --from=builder /app/site/public ./public
 
-# Copy migration files, script, and dependencies for database setup
+# Copy migration/seed files, scripts, and dependencies for database setup
 COPY --from=builder /app/site/drizzle ./drizzle
 COPY --from=builder /app/site/scripts/migrate.mjs ./scripts/migrate.mjs
+COPY --from=builder /app/site/scripts/seed.mjs ./scripts/seed.mjs
 COPY --from=deps /app/site/node_modules ./node_modules
 
 # Create directories for cache and data
