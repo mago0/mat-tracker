@@ -41,12 +41,12 @@ services:
     ports:
       - "${HOST_PORT:-3000}:${PORT:-3000}"
     volumes:
-      - ./data:/app/data
+      - ${DATA_DIR:-./data}:/app/data
     environment:
       - NODE_ENV=production
       - PORT=${PORT:-3000}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - DATABASE_PATH=/app/data/mat-tracker.db
+      - DATABASE_PATH=${DATABASE_PATH:-/app/data/mat-tracker.db}
       - TZ=${TZ:-America/New_York}
     networks:
       - app_net
