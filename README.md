@@ -76,6 +76,8 @@ docker compose exec dev npm run db:studio
 
 ## Testing
 
+### Unit Tests
+
 ```bash
 # Run tests in watch mode
 docker compose exec dev npm test
@@ -86,6 +88,23 @@ docker compose exec dev npm run test:run
 # Run tests with coverage
 docker compose exec dev npm run test:coverage
 ```
+
+### E2E Tests
+
+E2E tests use Playwright in a dedicated Docker container, testing against the running dev container.
+
+```bash
+# Run E2E tests (starts Playwright container)
+docker compose run --rm test
+```
+
+The test container uses the official Playwright image with all browser dependencies included. Tests run against `http://dev:3000` inside the Docker network.
+
+### CI/CD
+
+GitHub Actions runs tests automatically:
+- **Pull Requests**: Unit tests (vitest)
+- **Push to main**: E2E tests (playwright)
 
 ## Production Deployment
 

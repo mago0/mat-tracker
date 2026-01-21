@@ -1,0 +1,62 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+
+env:
+  ADMIN_PASSWORD: test-password
+  HOST_PORT: 3000
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create data directory
+        run: mkdir -p data
+
+      - name: Start app with Docker Compose
+        run: docker compose up -d --build
+
+      - name: Wait for app to be ready
+        run: |
+          echo "Waiting for app to be ready..."
+          timeout 120 bash -c 'until curl -s http://localhost:3000 > /dev/null 2>&1; do sleep 2; done'
+          echo "App is ready!"
+
+      - name: Run database migrations
+        run: docker compose exec -T dev npm run db:migrate
+
+      - name: Seed database
+        run: docker compose exec -T dev npm run db:seed
+
+      - name: Run E2E tests
+        run: docker compose run --rm test
+
+      - name: Docker logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop Docker Compose
+        if: always()
+        run: docker compose down
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: site/playwright-report/
+          retention-days: 7
+
+      - name: Upload test traces
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results
+          path: site/test-results/
+          retention-days: 7

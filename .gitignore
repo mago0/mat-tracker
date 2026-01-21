@@ -38,3 +38,8 @@ npm-debug.log*
 
 # Drizzle
 site/drizzle/meta/
+
+# Playwright
+site/test-results/
+site/playwright-report/
+site/playwright/.cache/

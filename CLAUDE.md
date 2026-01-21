@@ -18,10 +18,13 @@ docker compose exec dev npm run db:generate  # Generate migrations from schema c
 docker compose exec dev npm run db:migrate   # Apply pending migrations
 docker compose exec dev npm run db:studio    # Open Drizzle Studio (database GUI)
 
-# Testing
+# Unit Testing
 docker compose exec dev npm test             # Run tests in watch mode
 docker compose exec dev npm run test:run     # Run tests once
 docker compose exec dev npm run test:coverage # Run tests with coverage
+
+# E2E Testing (Playwright in Docker)
+docker compose run --rm test                 # Run full E2E suite against dev container
 ```
 
 ## Architecture Overview
@@ -34,7 +37,7 @@ docker compose exec dev npm run test:coverage # Run tests with coverage
 - **Styling**: Tailwind CSS v4
 - **Database**: SQLite with Drizzle ORM
 - **Authentication**: Simple password protection (env var)
-- **Testing**: Vitest, React Testing Library
+- **Testing**: Vitest, React Testing Library, Playwright (E2E)
 - **Deployment**: Docker Compose
 
 ### Key Directories
@@ -92,10 +95,27 @@ Simple password-based auth:
 - Login sets HTTP-only session cookie
 - Middleware protects all routes except `/login`
 
+### E2E Tests
+
+E2E tests live in `site/e2e/` and run via Playwright in a dedicated Docker container:
+
+```
+site/e2e/
+├── fixtures/test-utils.ts    # Login helper, test utilities
+├── auth.spec.ts              # Authentication flows
+├── students.spec.ts          # Student CRUD operations
+├── attendance.spec.ts        # Check-in functionality
+├── reports.spec.ts           # Attendance & promotion reports
+└── settings.spec.ts          # Threshold configuration
+```
+
+The `test` service in docker-compose.yml uses `mcr.microsoft.com/playwright:v1.50.0-jammy` and connects to the dev container via Docker network.
+
 ### Important Patterns
 
 1. **Server Components**: Use React Server Components by default, `"use client"` only when needed
 2. **Server Actions**: Prefer Server Actions over API routes for mutations
 3. **Path Alias**: Use `@/*` for imports from `src/*`
 4. **Soft Delete**: Students are archived (isActive=false), never hard deleted
-5. **Testing**: Add tests for new functionality, especially components with logic (see existing tests in `*.test.tsx` files)
+5. **Unit Tests**: Add tests for new functionality, especially components with logic (see `*.test.tsx` files)
+6. **E2E Tests**: Add E2E tests for new user flows (see `site/e2e/*.spec.ts` files)
