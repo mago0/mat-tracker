@@ -35,6 +35,45 @@ function isClassDay(date) {
   return day === 0 || day === 1 || day === 3 || day === 6;
 }
 
+// Realistic minimum months at belt per stripe (based on typical BJJ progression)
+const MONTHS_PER_STRIPE = {
+  white: 2.5,   // ~2-3 months per stripe
+  blue: 5,     // ~4-6 months per stripe (IBJJF requires 2 years minimum at blue)
+  purple: 4,   // ~3-5 months per stripe (IBJJF requires 1.5 years minimum at purple)
+  brown: 3.5,  // ~3-4 months per stripe (IBJJF requires 1 year minimum at brown)
+  black: 36,   // Degrees for black belt take years
+};
+
+// Minimum months at previous belt before promotion (IBJJF minimums as guide)
+const MIN_MONTHS_FOR_BELT = {
+  white: 0,    // Starting belt
+  blue: 12,    // ~1 year to blue (though varies widely)
+  purple: 24,  // IBJJF: 2 years at blue minimum
+  brown: 18,   // IBJJF: 1.5 years at purple minimum
+  black: 12,   // IBJJF: 1 year at brown minimum
+};
+
+// Calculate minimum training days needed for a belt/stripe combination
+function calculateMinimumTrainingDays(belt, stripes) {
+  const beltOrder = ["white", "blue", "purple", "brown", "black"];
+  const currentBeltIndex = beltOrder.indexOf(belt);
+
+  // Sum up time needed for all belt promotions
+  let totalMonths = 0;
+  for (let i = 0; i < currentBeltIndex; i++) {
+    const nextBelt = beltOrder[i + 1];
+    totalMonths += MIN_MONTHS_FOR_BELT[nextBelt];
+  }
+
+  // Add time at current belt based on stripes
+  totalMonths += stripes * MONTHS_PER_STRIPE[belt];
+
+  // Add some buffer time (10-30%)
+  const buffer = 1.1 + Math.random() * 0.2;
+
+  return Math.floor(totalMonths * 30 * buffer); // Convert to days
+}
+
 // Realistic BJJ student names
 const firstNames = [
   "Marcus", "Jake", "Tyler", "Brandon", "Derek", "Ryan", "Kevin", "Chris",
@@ -72,36 +111,32 @@ function generateStudents() {
     } while (usedNames.has(fullName));
     usedNames.add(fullName);
 
-    let belt, stripes, minDaysAgo, maxDaysAgo;
+    let belt, stripes;
 
     if (i < 2) {
       belt = "black";
-      stripes = Math.floor(Math.random() * 3);
-      minDaysAgo = 3650;
-      maxDaysAgo = 5475;
+      stripes = Math.floor(Math.random() * 3); // 0-2 degrees for black
     } else if (i < 4) {
       belt = "brown";
       stripes = Math.floor(Math.random() * 5);
-      minDaysAgo = 2190;
-      maxDaysAgo = 3285;
     } else if (i < 8) {
       belt = "purple";
       stripes = Math.floor(Math.random() * 5);
-      minDaysAgo = 1460;
-      maxDaysAgo = 2190;
     } else if (i < 14) {
       belt = "blue";
       stripes = Math.floor(Math.random() * 5);
-      minDaysAgo = 548;
-      maxDaysAgo = 1460;
     } else {
       belt = "white";
       stripes = Math.floor(Math.random() * 5);
-      minDaysAgo = 60;
-      maxDaysAgo = 548;
     }
 
-    const daysAgo = Math.floor(Math.random() * (maxDaysAgo - minDaysAgo)) + minDaysAgo;
+    // Calculate minimum days needed based on belt and stripes
+    const minDaysNeeded = calculateMinimumTrainingDays(belt, stripes);
+
+    // Add variance: minimum needed + 0-50% extra time
+    const extraTimeFactor = 1 + Math.random() * 0.5;
+    const daysAgo = Math.floor(minDaysNeeded * extraTimeFactor);
+
     const startDate = new Date(today);
     startDate.setDate(startDate.getDate() - daysAgo);
 
@@ -239,24 +274,38 @@ async function seed() {
     const promotions = [];
     const startDate = new Date(profile.startDate);
     const today = new Date();
-    const totalDaysTraining = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
     const currentBeltIndex = beltOrder.indexOf(profile.belt);
 
+    // Work backwards: calculate when current belt was earned based on stripes
+    // This ensures time at current belt is realistic
+    const daysAtCurrentBelt = profile.stripes * MONTHS_PER_STRIPE[profile.belt] * 30 * (1.1 + Math.random() * 0.3);
+    const currentBeltPromotionDate = new Date(today);
+    currentBeltPromotionDate.setDate(currentBeltPromotionDate.getDate() - Math.floor(daysAtCurrentBelt));
+
     // Generate belt promotions from white to current belt
     if (currentBeltIndex > 0) {
-      const timeForBeltPromotions = totalDaysTraining * 0.8;
-      const daysPerBelt = timeForBeltPromotions / currentBeltIndex;
+      // Calculate time available for all belt promotions
+      const timeBeforeCurrentBelt = Math.floor((currentBeltPromotionDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Distribute previous belt promotions based on minimum requirements
+      let cumulativeDays = 0;
+      const totalMinMonths = beltOrder.slice(1, currentBeltIndex + 1).reduce((sum, belt) => sum + MIN_MONTHS_FOR_BELT[belt], 0);
+      const scaleFactor = timeBeforeCurrentBelt / (totalMinMonths * 30);
 
       for (let i = 0; i < currentBeltIndex; i++) {
         const fromBelt = beltOrder[i];
         const toBelt = beltOrder[i + 1];
-        const variance = 0.8 + Math.random() * 0.4;
-        const daysFromStart = Math.floor(daysPerBelt * (i + 1) * variance);
-        const promoDate = new Date(startDate);
-        promoDate.setDate(promoDate.getDate() + daysFromStart);
 
-        if (promoDate < today) {
+        // Use minimum time scaled to available time, with some variance
+        const monthsAtBelt = MIN_MONTHS_FOR_BELT[toBelt] * scaleFactor * (0.9 + Math.random() * 0.2);
+        cumulativeDays += Math.floor(monthsAtBelt * 30);
+
+        const promoDate = new Date(startDate);
+        promoDate.setDate(promoDate.getDate() + cumulativeDays);
+
+        // Don't create promotions in the future
+        if (promoDate < today && promoDate < currentBeltPromotionDate) {
           promotions.push({
             fromBelt,
             fromStripes: 4,
@@ -268,21 +317,23 @@ async function seed() {
       }
     }
 
-    // Generate stripe promotions at current belt
+    // Generate stripe promotions at current belt (if they have stripes)
     if (profile.stripes > 0) {
+      // Find when they got their current belt
       const lastBeltPromo = promotions.filter(p => p.toBelt === profile.belt).pop();
       const beltStartDate = lastBeltPromo ? lastBeltPromo.date : startDate;
-      const daysAtCurrentBelt = Math.floor((today.getTime() - beltStartDate.getTime()) / (1000 * 60 * 60 * 24));
 
-      const timeForStripes = daysAtCurrentBelt * 0.85;
-      const daysPerStripe = timeForStripes / profile.stripes;
+      // Distribute stripes based on realistic MONTHS_PER_STRIPE values
+      const monthsPerStripeForBelt = MONTHS_PER_STRIPE[profile.belt];
 
       for (let stripe = 1; stripe <= profile.stripes; stripe++) {
-        const variance = 0.8 + Math.random() * 0.4;
-        const daysFromBeltStart = Math.floor(daysPerStripe * stripe * variance);
+        // Each stripe takes monthsPerStripeForBelt with some variance
+        const variance = 0.85 + Math.random() * 0.3;
+        const daysFromBeltStart = Math.floor(stripe * monthsPerStripeForBelt * 30 * variance);
         const promoDate = new Date(beltStartDate);
         promoDate.setDate(promoDate.getDate() + daysFromBeltStart);
 
+        // Don't create promotions in the future
         if (promoDate < today) {
           promotions.push({
             fromBelt: profile.belt,
