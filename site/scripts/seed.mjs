@@ -229,23 +229,88 @@ async function seed() {
 
   console.log(`  + Created ${totalAttendance} attendance records`);
 
-  // Generate promotion records
+  // Generate realistic promotion history
   console.log("\nGenerating promotion records...");
   let totalPromotions = 0;
 
+  const beltOrder = ["white", "blue", "purple", "brown", "black"];
+
   for (const { id, profile } of studentRecords) {
-    if (profile.belt === "white" && profile.stripes === 0) continue;
+    const promotions = [];
+    const startDate = new Date(profile.startDate);
+    const today = new Date();
+    const totalDaysTraining = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
-    const daysAgo = 30 + Math.floor(Math.random() * 150);
-    const promotionDate = new Date();
-    promotionDate.setDate(promotionDate.getDate() - daysAgo);
+    const currentBeltIndex = beltOrder.indexOf(profile.belt);
 
-    db.run(sql`
-      INSERT INTO promotions (id, student_id, from_belt, from_stripes, to_belt, to_stripes, promoted_at, notes)
-      VALUES (${uuid()}, ${id}, ${profile.belt}, ${profile.stripes}, ${profile.belt}, ${profile.stripes}, ${formatDate(promotionDate)}, 'Baseline promotion (seeded data)')
-    `);
+    // Generate belt promotions from white to current belt
+    if (currentBeltIndex > 0) {
+      const timeForBeltPromotions = totalDaysTraining * 0.8;
+      const daysPerBelt = timeForBeltPromotions / currentBeltIndex;
 
-    totalPromotions++;
+      for (let i = 0; i < currentBeltIndex; i++) {
+        const fromBelt = beltOrder[i];
+        const toBelt = beltOrder[i + 1];
+        const variance = 0.8 + Math.random() * 0.4;
+        const daysFromStart = Math.floor(daysPerBelt * (i + 1) * variance);
+        const promoDate = new Date(startDate);
+        promoDate.setDate(promoDate.getDate() + daysFromStart);
+
+        if (promoDate < today) {
+          promotions.push({
+            fromBelt,
+            fromStripes: 4,
+            toBelt,
+            toStripes: 0,
+            date: promoDate,
+          });
+        }
+      }
+    }
+
+    // Generate stripe promotions at current belt
+    if (profile.stripes > 0) {
+      const lastBeltPromo = promotions.filter(p => p.toBelt === profile.belt).pop();
+      const beltStartDate = lastBeltPromo ? lastBeltPromo.date : startDate;
+      const daysAtCurrentBelt = Math.floor((today.getTime() - beltStartDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      const timeForStripes = daysAtCurrentBelt * 0.85;
+      const daysPerStripe = timeForStripes / profile.stripes;
+
+      for (let stripe = 1; stripe <= profile.stripes; stripe++) {
+        const variance = 0.8 + Math.random() * 0.4;
+        const daysFromBeltStart = Math.floor(daysPerStripe * stripe * variance);
+        const promoDate = new Date(beltStartDate);
+        promoDate.setDate(promoDate.getDate() + daysFromBeltStart);
+
+        if (promoDate < today) {
+          promotions.push({
+            fromBelt: profile.belt,
+            fromStripes: stripe - 1,
+            toBelt: profile.belt,
+            toStripes: stripe,
+            date: promoDate,
+          });
+        }
+      }
+    }
+
+    // Sort by date and insert
+    promotions.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    for (const promo of promotions) {
+      const isBeltPromo = promo.fromBelt !== promo.toBelt;
+      const notes = isBeltPromo
+        ? `Promoted to ${promo.toBelt} belt`
+        : `Earned stripe ${promo.toStripes}`;
+
+      db.run(sql`
+        INSERT INTO promotions (id, student_id, from_belt, from_stripes, to_belt, to_stripes, promoted_at, notes)
+        VALUES (${uuid()}, ${id}, ${promo.fromBelt}, ${promo.fromStripes}, ${promo.toBelt}, ${promo.toStripes}, ${formatDate(promo.date)}, ${notes})
+      `);
+
+      totalPromotions++;
+    }
   }
 
   console.log(`  + Created ${totalPromotions} promotion records`);
