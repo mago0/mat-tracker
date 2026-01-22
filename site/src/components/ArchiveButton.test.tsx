@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { ArchiveButton } from "./ArchiveButton";
 
 describe("ArchiveButton", () => {
@@ -49,5 +49,29 @@ describe("ArchiveButton", () => {
     const hiddenInput = container.querySelector('input[type="hidden"]');
     expect(hiddenInput).toHaveAttribute("name", "studentId");
     expect(hiddenInput).toHaveAttribute("value", "test-id-456");
+  });
+
+  it("shows confirmation state on first click", () => {
+    render(
+      <ArchiveButton studentId="123" isArchived={false} action={mockAction} />
+    );
+
+    const button = screen.getByRole("button");
+    fireEvent.click(button);
+
+    expect(button).toHaveTextContent("Tap again to confirm");
+    expect(button).toHaveClass("bg-yellow-100");
+  });
+
+  it("shows confirmation state for unarchive on first click", () => {
+    render(
+      <ArchiveButton studentId="123" isArchived={true} action={mockAction} />
+    );
+
+    const button = screen.getByRole("button");
+    fireEvent.click(button);
+
+    expect(button).toHaveTextContent("Tap again to confirm");
+    expect(button).toHaveClass("bg-yellow-100");
   });
 });
