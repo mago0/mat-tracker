@@ -6,6 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { BeltDisplay } from "@/components/BeltDisplay";
 import { AttendanceFilters } from "@/components/AttendanceFilters";
 import { getLocalDateString } from "@/lib/dateUtils";
+import { actionLogger } from "@/lib/logger";
 
 async function getActiveStudents() {
   return db
@@ -32,24 +33,37 @@ async function checkIn(formData: FormData) {
   const classType = formData.get("classType") as ClassType;
   const date = formData.get("date") as string;
 
-  // Check if already checked in today for this class type
-  const [existing] = await db
-    .select()
-    .from(attendance)
-    .where(
-      and(
-        eq(attendance.studentId, studentId),
-        eq(attendance.date, date),
-        eq(attendance.classType, classType)
-      )
-    );
+  try {
+    // Check if already checked in today for this class type
+    const [existing] = await db
+      .select()
+      .from(attendance)
+      .where(
+        and(
+          eq(attendance.studentId, studentId),
+          eq(attendance.date, date),
+          eq(attendance.classType, classType)
+        )
+      );
 
-  if (!existing) {
-    await db.insert(attendance).values({
-      studentId,
-      date,
-      classType,
-    });
+    if (!existing) {
+      await db.insert(attendance).values({
+        studentId,
+        date,
+        classType,
+      });
+
+      actionLogger.info(
+        { action: "checkIn", entityType: "attendance", entityId: studentId, date, classType },
+        "Student checked in"
+      );
+    }
+  } catch (error) {
+    actionLogger.error(
+      { action: "checkIn", entityType: "attendance", entityId: studentId, date, classType, error: error instanceof Error ? error.message : error },
+      "Failed to check in student"
+    );
+    throw error;
   }
 
   redirect(`/attendance?date=${date}&classType=${classType}`);
@@ -62,15 +76,28 @@ async function removeCheckIn(formData: FormData) {
   const classType = formData.get("classType") as ClassType;
   const date = formData.get("date") as string;
 
-  await db
-    .delete(attendance)
-    .where(
-      and(
-        eq(attendance.studentId, studentId),
-        eq(attendance.date, date),
-        eq(attendance.classType, classType)
-      )
+  try {
+    await db
+      .delete(attendance)
+      .where(
+        and(
+          eq(attendance.studentId, studentId),
+          eq(attendance.date, date),
+          eq(attendance.classType, classType)
+        )
+      );
+
+    actionLogger.info(
+      { action: "removeCheckIn", entityType: "attendance", entityId: studentId, date, classType },
+      "Check-in removed"
     );
+  } catch (error) {
+    actionLogger.error(
+      { action: "removeCheckIn", entityType: "attendance", entityId: studentId, date, classType, error: error instanceof Error ? error.message : error },
+      "Failed to remove check-in"
+    );
+    throw error;
+  }
 
   redirect(`/attendance?date=${date}&classType=${classType}`);
 }

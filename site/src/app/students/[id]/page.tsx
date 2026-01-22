@@ -16,6 +16,7 @@ import { MonthlyCalendar } from "@/components/MonthlyCalendar";
 import { BELT_LABELS, NOTE_CATEGORY_LABELS } from "@/lib/constants";
 import { getStudentPromotionStatus, getNextBelt } from "@/lib/promotionStats";
 import { getLocalDateString, getLocalDateStringYearsAgo } from "@/lib/dateUtils";
+import { actionLogger } from "@/lib/logger";
 
 function AttendanceCalendars({ attendanceDates }: { attendanceDates: string[] }) {
   const dateSet = new Set(attendanceDates);
@@ -92,26 +93,39 @@ async function promoteStudent(formData: FormData) {
   const promotionNotes = (formData.get("notes") as string) || null;
   const today = getLocalDateString();
 
-  // Record the promotion
-  await db.insert(promotions).values({
-    studentId,
-    fromBelt,
-    fromStripes,
-    toBelt,
-    toStripes,
-    promotedAt: today,
-    notes: promotionNotes,
-  });
+  try {
+    // Record the promotion
+    await db.insert(promotions).values({
+      studentId,
+      fromBelt,
+      fromStripes,
+      toBelt,
+      toStripes,
+      promotedAt: today,
+      notes: promotionNotes,
+    });
 
-  // Update the student's current belt/stripes
-  await db
-    .update(students)
-    .set({
-      currentBelt: toBelt,
-      currentStripes: toStripes,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(students.id, studentId));
+    // Update the student's current belt/stripes
+    await db
+      .update(students)
+      .set({
+        currentBelt: toBelt,
+        currentStripes: toStripes,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(students.id, studentId));
+
+    actionLogger.info(
+      { action: "promoteStudent", entityType: "student", entityId: studentId, fromBelt, fromStripes, toBelt, toStripes },
+      `Student promoted from ${fromBelt}/${fromStripes} to ${toBelt}/${toStripes}`
+    );
+  } catch (error) {
+    actionLogger.error(
+      { action: "promoteStudent", entityType: "student", entityId: studentId, error: error instanceof Error ? error.message : error },
+      "Failed to promote student"
+    );
+    throw error;
+  }
 
   redirect(`/students/${studentId}`);
 }
@@ -121,13 +135,26 @@ async function archiveStudent(formData: FormData) {
 
   const studentId = formData.get("studentId") as string;
 
-  await db
-    .update(students)
-    .set({
-      isActive: false,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(students.id, studentId));
+  try {
+    await db
+      .update(students)
+      .set({
+        isActive: false,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(students.id, studentId));
+
+    actionLogger.info(
+      { action: "archiveStudent", entityType: "student", entityId: studentId },
+      "Student archived"
+    );
+  } catch (error) {
+    actionLogger.error(
+      { action: "archiveStudent", entityType: "student", entityId: studentId, error: error instanceof Error ? error.message : error },
+      "Failed to archive student"
+    );
+    throw error;
+  }
 
   redirect("/students");
 }
@@ -137,13 +164,26 @@ async function unarchiveStudent(formData: FormData) {
 
   const studentId = formData.get("studentId") as string;
 
-  await db
-    .update(students)
-    .set({
-      isActive: true,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(students.id, studentId));
+  try {
+    await db
+      .update(students)
+      .set({
+        isActive: true,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(students.id, studentId));
+
+    actionLogger.info(
+      { action: "unarchiveStudent", entityType: "student", entityId: studentId },
+      "Student unarchived"
+    );
+  } catch (error) {
+    actionLogger.error(
+      { action: "unarchiveStudent", entityType: "student", entityId: studentId, error: error instanceof Error ? error.message : error },
+      "Failed to unarchive student"
+    );
+    throw error;
+  }
 
   redirect(`/students/${studentId}`);
 }

@@ -13,6 +13,7 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - DATABASE_PATH=${DATABASE_PATH:-/app/data/mat-tracker.db}
       - TZ=${TZ:-America/New_York}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
     networks:
       - app_net
     deploy:

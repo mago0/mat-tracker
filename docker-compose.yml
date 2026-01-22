@@ -15,6 +15,7 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-test-password}
       - DATABASE_PATH=/app/data/mat-tracker.db
       - TZ=${TZ:-America/New_York}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
     command: sh -c "npm install && npm run dev"
 
   # E2E Tests (run with `docker compose run test`)

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { students, BELTS, type Belt } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { BELT_LABELS } from "@/lib/constants";
+import { actionLogger } from "@/lib/logger";
 
 async function getStudent(id: string) {
   const [student] = await db
@@ -30,7 +31,20 @@ async function updateStudent(formData: FormData) {
     updatedAt: new Date().toISOString(),
   };
 
-  await db.update(students).set(data).where(eq(students.id, id));
+  try {
+    await db.update(students).set(data).where(eq(students.id, id));
+    actionLogger.info(
+      { action: "updateStudent", entityType: "student", entityId: id },
+      "Student updated"
+    );
+  } catch (error) {
+    actionLogger.error(
+      { action: "updateStudent", entityType: "student", entityId: id, error: error instanceof Error ? error.message : error },
+      "Failed to update student"
+    );
+    throw error;
+  }
+
   redirect(`/students/${id}`);
 }
 

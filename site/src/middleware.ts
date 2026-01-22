@@ -5,10 +5,13 @@ const SESSION_COOKIE = "mat-tracker-session";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const requestId = crypto.randomUUID();
 
   // Allow login page and API routes
   if (pathname === "/login" || pathname.startsWith("/api/auth")) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set("x-request-id", requestId);
+    return response;
   }
 
   // Check for session cookie
@@ -18,10 +21,30 @@ export function middleware(request: NextRequest) {
   if (!session?.value && process.env.ADMIN_PASSWORD) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+
+    // Log auth redirect (Edge runtime doesn't support Pino, use structured console.log)
+    console.log(
+      JSON.stringify({
+        level: "info",
+        time: new Date().toISOString(),
+        app: "mat-tracker",
+        context: "request",
+        requestId,
+        method: request.method,
+        path: pathname,
+        event: "auth_redirect",
+        msg: "Redirecting to login",
+      })
+    );
+
+    const response = NextResponse.redirect(loginUrl);
+    response.headers.set("x-request-id", requestId);
+    return response;
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.headers.set("x-request-id", requestId);
+  return response;
 }
 
 export const config = {

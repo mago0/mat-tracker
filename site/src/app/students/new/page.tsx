@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { students, promotions, BELTS, type Belt } from "@/lib/db/schema";
 import { BELT_LABELS } from "@/lib/constants";
 import { NewStudentForm } from "./NewStudentForm";
+import { actionLogger } from "@/lib/logger";
 
 async function createStudent(formData: FormData) {
   "use server";
@@ -24,21 +25,37 @@ async function createStudent(formData: FormData) {
     currentStripes,
   };
 
-  const [newStudent] = await db.insert(students).values(data).returning({ id: students.id });
+  let newStudentId: string | undefined;
 
-  // If a last promoted date was provided and student isn't a fresh white belt,
-  // create a baseline promotion record
-  const isNotFreshWhiteBelt = currentBelt !== "white" || currentStripes > 0;
-  if (lastPromotedDate && isNotFreshWhiteBelt && newStudent) {
-    await db.insert(promotions).values({
-      studentId: newStudent.id,
-      fromBelt: currentBelt, // Same belt (baseline record)
-      fromStripes: currentStripes,
-      toBelt: currentBelt,
-      toStripes: currentStripes,
-      promotedAt: lastPromotedDate,
-      notes: "Baseline promotion (pre-existing rank at onboarding)",
-    });
+  try {
+    const [newStudent] = await db.insert(students).values(data).returning({ id: students.id });
+    newStudentId = newStudent?.id;
+
+    // If a last promoted date was provided and student isn't a fresh white belt,
+    // create a baseline promotion record
+    const isNotFreshWhiteBelt = currentBelt !== "white" || currentStripes > 0;
+    if (lastPromotedDate && isNotFreshWhiteBelt && newStudent) {
+      await db.insert(promotions).values({
+        studentId: newStudent.id,
+        fromBelt: currentBelt, // Same belt (baseline record)
+        fromStripes: currentStripes,
+        toBelt: currentBelt,
+        toStripes: currentStripes,
+        promotedAt: lastPromotedDate,
+        notes: "Baseline promotion (pre-existing rank at onboarding)",
+      });
+    }
+
+    actionLogger.info(
+      { action: "createStudent", entityType: "student", entityId: newStudentId, name: `${data.firstName} ${data.lastName}` },
+      "Student created"
+    );
+  } catch (error) {
+    actionLogger.error(
+      { action: "createStudent", entityType: "student", name: `${data.firstName} ${data.lastName}`, error: error instanceof Error ? error.message : error },
+      "Failed to create student"
+    );
+    throw error;
   }
 
   redirect("/students");
