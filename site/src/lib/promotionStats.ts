@@ -85,6 +85,39 @@ export async function getLastPromotionDate(studentId: string): Promise<string> {
 }
 
 /**
+ * Get the date when the student was promoted to their current belt.
+ * Returns the most recent belt promotion (where belt changed), or startDate if none.
+ */
+export async function getLastBeltPromotionDate(studentId: string): Promise<string> {
+  const [lastBeltPromo] = await db
+    .select({ promotedAt: promotions.promotedAt })
+    .from(promotions)
+    .where(eq(promotions.studentId, studentId))
+    .orderBy(desc(promotions.promotedAt));
+
+  // Find the most recent promotion where the belt changed
+  const allPromos = await db
+    .select({ promotedAt: promotions.promotedAt, fromBelt: promotions.fromBelt, toBelt: promotions.toBelt })
+    .from(promotions)
+    .where(eq(promotions.studentId, studentId))
+    .orderBy(desc(promotions.promotedAt));
+
+  for (const promo of allPromos) {
+    if (promo.fromBelt !== promo.toBelt) {
+      return promo.promotedAt;
+    }
+  }
+
+  // No belt promotion found, fall back to start date
+  const [student] = await db
+    .select({ startDate: students.startDate })
+    .from(students)
+    .where(eq(students.id, studentId));
+
+  return student?.startDate ?? getLocalDateString();
+}
+
+/**
  * Count attendance records since a given date
  */
 export async function getAttendanceSinceDate(
@@ -105,11 +138,36 @@ export interface PromotionStatus {
   classesSincePromotion: number;
   daysSincePromotion: number;
   lastPromotionDate: string;
+  daysAtBelt: number;
+  lastBeltPromotionDate: string;
   stripeDue: boolean;
   beltEligible: boolean;
   progress: number; // 0-100 percentage toward next threshold
   nextThreshold: number;
   isStripePromotion: boolean; // true if next promotion is a stripe, false if belt
+}
+
+/**
+ * Format days into a human-readable time string (e.g., "1y 3mo", "6 months")
+ */
+export function formatTimeAtBelt(days: number): string {
+  if (days < 30) {
+    return `${days} day${days !== 1 ? "s" : ""}`;
+  }
+
+  const months = Math.floor(days / 30);
+  const years = Math.floor(months / 12);
+  const remainingMonths = months % 12;
+
+  if (years === 0) {
+    return `${months} month${months !== 1 ? "s" : ""}`;
+  }
+
+  if (remainingMonths === 0) {
+    return `${years}y`;
+  }
+
+  return `${years}y ${remainingMonths}mo`;
 }
 
 /**
@@ -120,6 +178,8 @@ export function calculatePromotionStatus(
   classesSincePromotion: number,
   daysSincePromotion: number,
   lastPromotionDate: string,
+  daysAtBelt: number,
+  lastBeltPromotionDate: string,
   thresholds: PromotionThresholds
 ): PromotionStatus {
   const { currentBelt, currentStripes } = student;
@@ -150,6 +210,8 @@ export function calculatePromotionStatus(
     classesSincePromotion,
     daysSincePromotion,
     lastPromotionDate,
+    daysAtBelt,
+    lastBeltPromotionDate,
     stripeDue,
     beltEligible,
     progress,
@@ -165,9 +227,10 @@ export async function getStudentPromotionStatus(
   studentId: string,
   student: Pick<Student, "currentBelt" | "currentStripes">
 ): Promise<PromotionStatus> {
-  const [thresholds, lastPromotionDate] = await Promise.all([
+  const [thresholds, lastPromotionDate, lastBeltPromotionDate] = await Promise.all([
     getPromotionThresholds(),
     getLastPromotionDate(studentId),
+    getLastBeltPromotionDate(studentId),
   ]);
 
   const classesSincePromotion = await getAttendanceSinceDate(
@@ -181,11 +244,18 @@ export async function getStudentPromotionStatus(
     (today.getTime() - promoDate.getTime()) / (1000 * 60 * 60 * 24)
   );
 
+  const beltPromoDate = new Date(lastBeltPromotionDate);
+  const daysAtBelt = Math.floor(
+    (today.getTime() - beltPromoDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
   return calculatePromotionStatus(
     student,
     classesSincePromotion,
     daysSincePromotion,
     lastPromotionDate,
+    daysAtBelt,
+    lastBeltPromotionDate,
     thresholds
   );
 }
@@ -208,7 +278,10 @@ export async function getAllStudentsPromotionStatus(): Promise<
 
   const results = await Promise.all(
     activeStudents.map(async (student) => {
-      const lastPromotionDate = await getLastPromotionDate(student.id);
+      const [lastPromotionDate, lastBeltPromotionDate] = await Promise.all([
+        getLastPromotionDate(student.id),
+        getLastBeltPromotionDate(student.id),
+      ]);
       const classesSincePromotion = await getAttendanceSinceDate(
         student.id,
         lastPromotionDate
@@ -220,11 +293,18 @@ export async function getAllStudentsPromotionStatus(): Promise<
         (today.getTime() - promoDate.getTime()) / (1000 * 60 * 60 * 24)
       );
 
+      const beltPromoDate = new Date(lastBeltPromotionDate);
+      const daysAtBelt = Math.floor(
+        (today.getTime() - beltPromoDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
       const status = calculatePromotionStatus(
         student,
         classesSincePromotion,
         daysSincePromotion,
         lastPromotionDate,
+        daysAtBelt,
+        lastBeltPromotionDate,
         thresholds
       );
 

@@ -113,20 +113,20 @@ export interface PromotionThresholds {
 }
 
 export const DEFAULT_PROMOTION_THRESHOLDS: PromotionThresholds = {
-  // Classes between stripes at each belt level
+  // Classes between stripes at each belt level (based on 3x/week = ~150 classes/year)
   stripeThresholds: {
-    white: 25,   // ~2 months at 3x/week
-    blue: 40,    // ~3 months at 3x/week
+    white: 40,   // ~3 months at 3x/week
+    blue: 60,    // ~5 months at 3x/week
     purple: 50,  // ~4 months at 3x/week
-    brown: 60,   // ~5 months at 3x/week
-    black: 100,  // Black belt degrees are traditionally time-based (years)
+    brown: 30,   // ~2.5 months at 3x/week
+    black: 100,  // ~8 months (degrees follow IBJJF 3-year cycle)
   },
-  // Classes to be eligible for next belt (at 4 stripes)
-  // Based roughly on IBJJF minimum time requirements
+  // Classes AFTER 4th stripe to be eligible for next belt
+  // This is the "waiting room" period before belt promotion
   beltThresholds: {
-    white: 200,  // ~1.5 years at 3x/week
-    blue: 300,   // ~2 years at 3x/week (IBJJF minimum)
-    purple: 225, // ~1.5 years at 3x/week (IBJJF minimum)
-    brown: 150,  // ~1 year at 3x/week (IBJJF minimum)
+    white: 40,   // +40 classes after 4th stripe (~1.3 years total at white)
+    blue: 60,    // +60 classes after 4th stripe (~2.0 years total at blue)
+    purple: 25,  // +25 classes after 4th stripe (~1.5 years total at purple)
+    brown: 30,   // +30 classes after 4th stripe (~1.0 year total at brown)
   },
 };

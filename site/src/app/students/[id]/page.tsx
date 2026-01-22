@@ -14,7 +14,7 @@ import { BeltDisplay } from "@/components/BeltDisplay";
 import { ArchiveButton } from "@/components/ArchiveButton";
 import { MonthlyCalendar } from "@/components/MonthlyCalendar";
 import { BELT_LABELS, NOTE_CATEGORY_LABELS } from "@/lib/constants";
-import { getStudentPromotionStatus, getNextBelt } from "@/lib/promotionStats";
+import { getStudentPromotionStatus, getNextBelt, formatTimeAtBelt } from "@/lib/promotionStats";
 import { getLocalDateString, getLocalDateStringYearsAgo } from "@/lib/dateUtils";
 import { actionLogger } from "@/lib/logger";
 
@@ -308,9 +308,9 @@ export default async function StudentDetailPage({
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Days:</span>{" "}
+                    <span className="text-gray-500">Time at Belt:</span>{" "}
                     <span className="font-medium">
-                      {promotionStatus.daysSincePromotion}
+                      {formatTimeAtBelt(promotionStatus.daysAtBelt)}
                     </span>
                   </div>
                 </div>
