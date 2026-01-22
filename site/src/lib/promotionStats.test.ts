@@ -4,6 +4,7 @@ import {
   getNextBelt,
   formatTimeAtBelt,
 } from "./promotionStats";
+import { getPromotionWarning } from "./promotionValidation";
 import { DEFAULT_PROMOTION_THRESHOLDS } from "./db/schema";
 
 describe("promotionStats", () => {
@@ -222,6 +223,74 @@ describe("promotionStats", () => {
 
     it("should return null for black belt", () => {
       expect(getNextBelt("black")).toBe(null);
+    });
+  });
+
+  describe("getPromotionWarning", () => {
+    describe("standard promotions (should return null)", () => {
+      it("should allow no change", () => {
+        expect(getPromotionWarning("white", 0, "white", 0)).toBe(null);
+        expect(getPromotionWarning("blue", 2, "blue", 2)).toBe(null);
+      });
+
+      it("should allow standard stripe increment", () => {
+        expect(getPromotionWarning("white", 0, "white", 1)).toBe(null);
+        expect(getPromotionWarning("blue", 2, "blue", 3)).toBe(null);
+        expect(getPromotionWarning("purple", 3, "purple", 4)).toBe(null);
+      });
+
+      it("should allow standard belt promotion (4 stripes to next belt 0 stripes)", () => {
+        expect(getPromotionWarning("white", 4, "blue", 0)).toBe(null);
+        expect(getPromotionWarning("blue", 4, "purple", 0)).toBe(null);
+        expect(getPromotionWarning("brown", 4, "black", 0)).toBe(null);
+      });
+    });
+
+    describe("non-standard promotions (should return warning)", () => {
+      it("should warn when going backwards in belt", () => {
+        const warning = getPromotionWarning("blue", 2, "white", 0);
+        expect(warning).not.toBe(null);
+        expect(warning).toContain("backwards");
+      });
+
+      it("should warn when skipping belts", () => {
+        const warning = getPromotionWarning("white", 4, "purple", 0);
+        expect(warning).not.toBe(null);
+        expect(warning).toContain("skipping");
+      });
+
+      it("should warn when promoting to next belt without 4 stripes", () => {
+        const warning = getPromotionWarning("white", 2, "blue", 0);
+        expect(warning).not.toBe(null);
+        expect(warning).toContain("without 4 stripes");
+      });
+
+      it("should warn when new belt starts with stripes > 0", () => {
+        const warning = getPromotionWarning("white", 4, "blue", 2);
+        expect(warning).not.toBe(null);
+        expect(warning).toContain("instead of 0");
+      });
+
+      it("should warn when skipping stripes on same belt", () => {
+        const warning = getPromotionWarning("blue", 1, "blue", 3);
+        expect(warning).not.toBe(null);
+        expect(warning).toContain("skipping");
+      });
+
+      it("should warn when reducing stripes on same belt", () => {
+        const warning = getPromotionWarning("blue", 3, "blue", 1);
+        expect(warning).not.toBe(null);
+        expect(warning).toContain("reducing stripes");
+      });
+
+      it("should combine multiple warnings", () => {
+        // Blue 2 stripes to Brown 3 stripes (skipping purple, without 4 stripes, starting with 3)
+        const warning = getPromotionWarning("blue", 2, "brown", 3);
+        expect(warning).not.toBe(null);
+        expect(warning).toContain("skipping");
+        expect(warning).toContain("without 4 stripes");
+        expect(warning).toContain("instead of 0");
+      });
     });
   });
 });

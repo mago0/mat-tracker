@@ -6,13 +6,13 @@ import {
   attendance,
   promotions,
   notes,
-  BELTS,
   type Belt,
 } from "@/lib/db/schema";
 import { eq, desc, gte, and } from "drizzle-orm";
 import { BeltDisplay } from "@/components/BeltDisplay";
 import { ArchiveButton } from "@/components/ArchiveButton";
 import { MonthlyCalendar } from "@/components/MonthlyCalendar";
+import { PromotionForm } from "@/components/PromotionForm";
 import { BELT_LABELS, NOTE_CATEGORY_LABELS } from "@/lib/constants";
 import { getStudentPromotionStatus, getNextBelt, formatTimeAtBelt } from "@/lib/promotionStats";
 import { getLocalDateString, getLocalDateStringYearsAgo } from "@/lib/dateUtils";
@@ -323,68 +323,12 @@ export default async function StudentDetailPage({
               </div>
 
               {/* Rank Update Form */}
-              <form action={promoteStudent} className="mt-4 pt-4 border-t">
-                <input type="hidden" name="studentId" value={id} />
-                <input
-                  type="hidden"
-                  name="fromBelt"
-                  value={student.currentBelt}
-                />
-                <input
-                  type="hidden"
-                  name="fromStripes"
-                  value={student.currentStripes}
-                />
-
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">
-                        Belt
-                      </label>
-                      <select
-                        name="toBelt"
-                        defaultValue={student.currentBelt}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                      >
-                        {BELTS.map((belt) => (
-                          <option key={belt} value={belt}>
-                            {BELT_LABELS[belt]}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">
-                        Stripes
-                      </label>
-                      <select
-                        name="toStripes"
-                        defaultValue={student.currentStripes}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                      >
-                        {[0, 1, 2, 3, 4].map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <input
-                    type="text"
-                    name="notes"
-                    placeholder="Notes (optional)"
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                  />
-                  <button
-                    type="submit"
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded text-sm font-semibold hover:bg-blue-500"
-                  >
-                    Update
-                  </button>
-                </div>
-              </form>
+              <PromotionForm
+                studentId={id}
+                currentBelt={student.currentBelt}
+                currentStripes={student.currentStripes}
+                action={promoteStudent}
+              />
             </div>
 
             {/* Contact Info */}

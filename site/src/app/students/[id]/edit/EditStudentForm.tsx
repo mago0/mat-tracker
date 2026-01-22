@@ -1,24 +1,75 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { BELTS, type Belt } from "@/lib/db/schema";
 import { BELT_LABELS } from "@/lib/constants";
+import { getPromotionWarning } from "@/lib/promotionValidation";
 
-interface NewStudentFormProps {
+interface Student {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  emergencyContact: string | null;
+  emergencyPhone: string | null;
+  startDate: string;
+  currentBelt: Belt;
+  currentStripes: number;
+}
+
+interface EditStudentFormProps {
+  student: Student;
   action: (formData: FormData) => Promise<void>;
 }
 
-export function NewStudentForm({ action }: NewStudentFormProps) {
-  const today = new Date().toISOString().split("T")[0];
-  const [currentBelt, setCurrentBelt] = useState<Belt>("white");
-  const [currentStripes, setCurrentStripes] = useState(0);
+export function EditStudentForm({ student, action }: EditStudentFormProps) {
+  const [currentBelt, setCurrentBelt] = useState<Belt>(student.currentBelt);
+  const [currentStripes, setCurrentStripes] = useState(student.currentStripes);
+  const [confirming, setConfirming] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
-  // Show last promoted date field if student is not a fresh white belt
-  const showLastPromotedDate = currentBelt !== "white" || currentStripes > 0;
+  // Reset confirmation state after 3 seconds
+  useEffect(() => {
+    if (!confirming) return;
+    const timeout = setTimeout(() => setConfirming(false), 3000);
+    return () => clearTimeout(timeout);
+  }, [confirming]);
+
+  // Check if the belt/stripe change is non-standard
+  const warning = getPromotionWarning(
+    student.currentBelt,
+    student.currentStripes,
+    currentBelt,
+    currentStripes
+  );
+
+  const handleSubmit = (e: React.FormEvent) => {
+    if (warning && !confirming) {
+      e.preventDefault();
+      setConfirming(true);
+    }
+    // If confirming is true or no warning, let the form submit normally
+  };
+
+  const handleBeltChange = (newBelt: Belt) => {
+    if (newBelt !== currentBelt) {
+      setCurrentStripes(0); // Reset stripes when belt changes
+    }
+    setCurrentBelt(newBelt);
+    setConfirming(false); // Reset confirmation when selection changes
+  };
+
+  const handleStripesChange = (newStripes: number) => {
+    setCurrentStripes(newStripes);
+    setConfirming(false); // Reset confirmation when selection changes
+  };
 
   return (
-    <form action={action} className="bg-white rounded-lg shadow p-6">
+    <form ref={formRef} action={action} onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6">
+      <input type="hidden" name="id" value={student.id} />
+
       <div className="space-y-6">
         {/* Name */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -34,6 +85,7 @@ export function NewStudentForm({ action }: NewStudentFormProps) {
               id="firstName"
               name="firstName"
               required
+              defaultValue={student.firstName}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -49,6 +101,7 @@ export function NewStudentForm({ action }: NewStudentFormProps) {
               id="lastName"
               name="lastName"
               required
+              defaultValue={student.lastName}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -67,6 +120,7 @@ export function NewStudentForm({ action }: NewStudentFormProps) {
               type="email"
               id="email"
               name="email"
+              defaultValue={student.email || ""}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -81,6 +135,7 @@ export function NewStudentForm({ action }: NewStudentFormProps) {
               type="tel"
               id="phone"
               name="phone"
+              defaultValue={student.phone || ""}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -99,6 +154,7 @@ export function NewStudentForm({ action }: NewStudentFormProps) {
               type="text"
               id="emergencyContact"
               name="emergencyContact"
+              defaultValue={student.emergencyContact || ""}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -113,6 +169,7 @@ export function NewStudentForm({ action }: NewStudentFormProps) {
               type="tel"
               id="emergencyPhone"
               name="emergencyPhone"
+              defaultValue={student.emergencyPhone || ""}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -131,7 +188,7 @@ export function NewStudentForm({ action }: NewStudentFormProps) {
             id="startDate"
             name="startDate"
             required
-            defaultValue={today}
+            defaultValue={student.startDate}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -149,13 +206,7 @@ export function NewStudentForm({ action }: NewStudentFormProps) {
               id="currentBelt"
               name="currentBelt"
               value={currentBelt}
-              onChange={(e) => {
-                const newBelt = e.target.value as Belt;
-                if (newBelt !== currentBelt) {
-                  setCurrentStripes(0); // Reset stripes when belt changes
-                }
-                setCurrentBelt(newBelt);
-              }}
+              onChange={(e) => handleBeltChange(e.target.value as Belt)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               {BELTS.map((belt) => (
@@ -176,7 +227,7 @@ export function NewStudentForm({ action }: NewStudentFormProps) {
               id="currentStripes"
               name="currentStripes"
               value={currentStripes}
-              onChange={(e) => setCurrentStripes(parseInt(e.target.value))}
+              onChange={(e) => handleStripesChange(parseInt(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               {[0, 1, 2, 3, 4].map((n) => (
@@ -188,26 +239,10 @@ export function NewStudentForm({ action }: NewStudentFormProps) {
           </div>
         </div>
 
-        {/* Last Promoted Date - shown only for non-fresh white belts */}
-        {showLastPromotedDate && (
-          <div className="p-4 bg-blue-50 rounded-md">
-            <label
-              htmlFor="lastPromotedDate"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Date of Last Promotion
-            </label>
-            <input
-              type="date"
-              id="lastPromotedDate"
-              name="lastPromotedDate"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              When did this student receive their current rank? This is used to
-              track attendance toward their next promotion. Leave blank to count
-              from their start date.
-            </p>
+        {/* Warning for non-standard changes */}
+        {warning && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-sm text-yellow-800">{warning}</p>
           </div>
         )}
       </div>
@@ -215,13 +250,17 @@ export function NewStudentForm({ action }: NewStudentFormProps) {
       <div className="mt-8 flex gap-4">
         <button
           type="submit"
-          className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          className={
+            confirming
+              ? "flex-1 bg-yellow-500 text-white py-2 px-4 rounded-md font-semibold hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+              : "flex-1 bg-blue-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          }
         >
-          Add Student
+          {confirming ? "Tap again to confirm" : "Save Changes"}
         </button>
         <Link
-          href="/students"
-          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          href={`/students/${student.id}`}
+          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 flex items-center justify-center"
         >
           Cancel
         </Link>
