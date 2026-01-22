@@ -74,17 +74,23 @@ function calculateMinimumTrainingDays(belt, stripes) {
   return Math.floor(totalMonths * 30 * buffer); // Convert to days
 }
 
-// Realistic BJJ student names
+// Realistic BJJ student names - expanded for 50+ students
 const firstNames = [
   "Marcus", "Jake", "Tyler", "Brandon", "Derek", "Ryan", "Kevin", "Chris",
   "Mike", "Josh", "Amanda", "Sarah", "Jessica", "Emily", "Rachel", "Nicole",
-  "Melissa", "Ashley", "Carlos", "Diego", "Andre", "Dmitri",
+  "Melissa", "Ashley", "Carlos", "Diego", "Andre", "Dmitri", "Alex", "Jordan",
+  "Taylor", "Morgan", "Casey", "Sam", "Pat", "Jamie", "Drew", "Corey",
+  "Shane", "Travis", "Blake", "Hunter", "Logan", "Ethan", "Mason", "Liam",
+  "Noah", "Olivia", "Emma", "Ava", "Sophia", "Isabella", "Mia", "Charlotte",
 ];
 
 const lastNames = [
   "Johnson", "Williams", "Martinez", "Garcia", "Miller", "Davis", "Rodriguez",
   "Wilson", "Anderson", "Taylor", "Thomas", "Moore", "Jackson", "White",
   "Harris", "Clark", "Lewis", "Robinson", "Walker", "Young", "King", "Wright",
+  "Scott", "Green", "Baker", "Adams", "Nelson", "Hill", "Ramirez", "Campbell",
+  "Mitchell", "Roberts", "Carter", "Phillips", "Evans", "Turner", "Torres",
+  "Parker", "Collins", "Edwards", "Stewart", "Sanchez", "Morris", "Rogers",
 ];
 
 // Generate student profiles
@@ -93,13 +99,25 @@ function generateStudents() {
   const usedNames = new Set();
   const students = [];
 
+  // Distribution for 50 students:
+  // 8 consistent, 14 regular, 10 sporadic, 6 inactive, 4 very-inactive, 8 archived
   const patterns = [
+    // Consistent (8)
     "consistent", "consistent", "consistent", "consistent",
-    "regular", "regular", "regular", "regular", "regular", "regular",
-    "sporadic", "sporadic", "sporadic", "sporadic",
-    "inactive", "inactive",
-    "very-inactive", "very-inactive",
-    "archived", "archived", "archived", "archived", "archived",
+    "consistent", "consistent", "consistent", "consistent",
+    // Regular (14)
+    "regular", "regular", "regular", "regular", "regular", "regular", "regular",
+    "regular", "regular", "regular", "regular", "regular", "regular", "regular",
+    // Sporadic (10)
+    "sporadic", "sporadic", "sporadic", "sporadic", "sporadic",
+    "sporadic", "sporadic", "sporadic", "sporadic", "sporadic",
+    // Inactive (6)
+    "inactive", "inactive", "inactive", "inactive", "inactive", "inactive",
+    // Very-inactive (4)
+    "very-inactive", "very-inactive", "very-inactive", "very-inactive",
+    // Archived (8)
+    "archived", "archived", "archived", "archived",
+    "archived", "archived", "archived", "archived",
   ];
 
   for (let i = 0; i < patterns.length; i++) {
@@ -111,21 +129,27 @@ function generateStudents() {
     } while (usedNames.has(fullName));
     usedNames.add(fullName);
 
+    // Distribution for 50 students: 20 white, 14 blue, 8 purple, 5 brown, 3 black
     let belt, stripes;
 
-    if (i < 2) {
+    if (i < 3) {
+      // Black belts (3)
       belt = "black";
       stripes = Math.floor(Math.random() * 3); // 0-2 degrees for black
-    } else if (i < 4) {
+    } else if (i < 8) {
+      // Brown belts (5)
       belt = "brown";
       stripes = Math.floor(Math.random() * 5);
-    } else if (i < 8) {
+    } else if (i < 16) {
+      // Purple belts (8)
       belt = "purple";
       stripes = Math.floor(Math.random() * 5);
-    } else if (i < 14) {
+    } else if (i < 30) {
+      // Blue belts (14)
       belt = "blue";
       stripes = Math.floor(Math.random() * 5);
     } else {
+      // White belts (20)
       belt = "white";
       stripes = Math.floor(Math.random() * 5);
     }
@@ -279,7 +303,9 @@ async function seed() {
 
     // Work backwards: calculate when current belt was earned based on stripes
     // This ensures time at current belt is realistic
-    const daysAtCurrentBelt = profile.stripes * MONTHS_PER_STRIPE[profile.belt] * 30 * (1.1 + Math.random() * 0.3);
+    // For 0 stripes, they've still been at this belt for at least a few months
+    const minMonthsAtBelt = profile.stripes === 0 ? (2 + Math.random() * 4) : 0; // 2-6 months minimum
+    const daysAtCurrentBelt = (profile.stripes * MONTHS_PER_STRIPE[profile.belt] + minMonthsAtBelt) * 30 * (1.1 + Math.random() * 0.3);
     const currentBeltPromotionDate = new Date(today);
     currentBeltPromotionDate.setDate(currentBeltPromotionDate.getDate() - Math.floor(daysAtCurrentBelt));
 
@@ -296,16 +322,24 @@ async function seed() {
       for (let i = 0; i < currentBeltIndex; i++) {
         const fromBelt = beltOrder[i];
         const toBelt = beltOrder[i + 1];
+        const isLastBeltPromo = (i === currentBeltIndex - 1);
 
         // Use minimum time scaled to available time, with some variance
         const monthsAtBelt = MIN_MONTHS_FOR_BELT[toBelt] * scaleFactor * (0.9 + Math.random() * 0.2);
         cumulativeDays += Math.floor(monthsAtBelt * 30);
 
-        const promoDate = new Date(startDate);
-        promoDate.setDate(promoDate.getDate() + cumulativeDays);
+        // For the last belt promotion (to current belt), use currentBeltPromotionDate
+        // to ensure it's always recorded
+        let promoDate;
+        if (isLastBeltPromo) {
+          promoDate = new Date(currentBeltPromotionDate);
+        } else {
+          promoDate = new Date(startDate);
+          promoDate.setDate(promoDate.getDate() + cumulativeDays);
+        }
 
         // Don't create promotions in the future
-        if (promoDate < today && promoDate < currentBeltPromotionDate) {
+        if (promoDate <= today) {
           promotions.push({
             fromBelt,
             fromStripes: 4,
