@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { authLogger } from "@/lib/logger";
 
 const SESSION_COOKIE = "mat-tracker-session";
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -50,7 +51,10 @@ export async function destroySession(): Promise<void> {
 export function validatePassword(password: string): boolean {
   const adminPassword = process.env.ADMIN_PASSWORD;
   if (!adminPassword) {
-    console.warn("ADMIN_PASSWORD not set - authentication disabled");
+    authLogger.warn(
+      { event: "no_password_configured" },
+      "ADMIN_PASSWORD not set - authentication disabled"
+    );
     return true;
   }
   return password === adminPassword;

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { students, notes, NOTE_CATEGORIES, type NoteCategory } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { NOTE_CATEGORY_LABELS } from "@/lib/constants";
+import { actionLogger } from "@/lib/logger";
 
 async function getStudent(id: string) {
   const [student] = await db
@@ -20,11 +21,24 @@ async function addNote(formData: FormData) {
   const category = formData.get("category") as NoteCategory;
   const content = formData.get("content") as string;
 
-  await db.insert(notes).values({
-    studentId,
-    category,
-    content,
-  });
+  try {
+    await db.insert(notes).values({
+      studentId,
+      category,
+      content,
+    });
+
+    actionLogger.info(
+      { action: "addNote", entityType: "note", studentId, category },
+      "Note added"
+    );
+  } catch (error) {
+    actionLogger.error(
+      { action: "addNote", entityType: "note", studentId, category, error: error instanceof Error ? error.message : error },
+      "Failed to add note"
+    );
+    throw error;
+  }
 
   redirect(`/students/${studentId}`);
 }

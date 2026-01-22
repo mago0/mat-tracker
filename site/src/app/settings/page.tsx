@@ -10,6 +10,7 @@ import {
   type PromotionThresholds,
 } from "@/lib/db/schema";
 import { BELT_LABELS } from "@/lib/constants";
+import { actionLogger } from "@/lib/logger";
 
 async function saveSettings(formData: FormData) {
   "use server";
@@ -34,7 +35,20 @@ async function saveSettings(formData: FormData) {
     beltThresholds,
   };
 
-  await savePromotionThresholds(thresholds);
+  try {
+    await savePromotionThresholds(thresholds);
+    actionLogger.info(
+      { action: "saveSettings", entityType: "settings" },
+      "Promotion thresholds updated"
+    );
+  } catch (error) {
+    actionLogger.error(
+      { action: "saveSettings", entityType: "settings", error: error instanceof Error ? error.message : error },
+      "Failed to save settings"
+    );
+    throw error;
+  }
+
   redirect("/settings?saved=1");
 }
 
